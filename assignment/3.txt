@@ -1,0 +1,41 @@
+/**
+ * Aggregation pipeline to calculate total revenue and average price per store per month.
+ * @returns {object[]} - Aggregated results sorted by store and month.
+ */
+db.sales.aggregate([
+    {
+        // Deconstruct the items array to create a document for each item.
+        $unwind: "$items" // Splits each array element into a separate document.
+    },
+    {
+        // Group by store and month to calculate total revenue and average price.
+        $group: {
+            _id: {
+                store: "$store", // Group by store name.
+                month: {
+                    $dateToString: { format: "%Y-%m", date: "$date" } // Extract year and month from the date.
+                }
+            },
+            totalRevenue: {
+                $sum: { $multiply: ["$items.quantity", "$items.price"] } // Calculate revenue for each item.
+            },
+            averagePrice: {
+                $avg: "$items.price" // Calculate the average price of items.
+            }
+        }
+    },
+    {
+        // Reshape the document to include required fields and remove the _id field.
+        $project: {
+            store: "$_id.store", // Extract the store name from the _id object.
+            month: "$_id.month", // Extract the month from the _id object.
+            totalRevenue: 1, // Include total revenue in the result.
+            averagePrice: 1, // Include average price in the result.
+            _id: 0 // Exclude the _id field from the output.
+        }
+    },
+    {
+        // Sort results first by store and then by month in ascending order.
+        $sort: { store: 1, month: 1 } // 1 indicates ascending order.
+    }
+]);
